@@ -1,0 +1,5 @@
+@import "tailwindcss";
+
+@theme {
+  --color-eduBlue: #2269e9;
+}
