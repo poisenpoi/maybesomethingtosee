@@ -1,126 +1,80 @@
 import Link from "next/link";
 import { JobUI } from "@/types/job.ui";
-import { JobType, WorkMode, ExperienceLevel } from "@prisma/client";
+import { WorkMode } from "@prisma/client";
 
 export default function JobCard({
   job,
-  isAuthenticated,
 }: {
   job: JobUI;
   isAuthenticated: boolean;
 }) {
-  const EXPERIENCE_LEVEL_LABELS: Record<ExperienceLevel, string> = {
-    JUNIOR: "Junior",
-    MID: "Mid",
-    SENIOR: "Senior",
-    LEAD: "Lead",
-  };
-
-  const JOB_TYPE_LABELS: Record<JobType, string> = {
-    FULL_TIME: "Full Time",
-    PART_TIME: "Part Time",
-    CONTRACT: "Contract",
-    FREELANCE: "Freelance",
-    INTERNSHIP: "Internship",
-  };
-
   const WORK_MODE_LABELS: Record<WorkMode, string> = {
     ONSITE: "On-site",
     REMOTE: "Remote",
     HYBRID: "Hybrid",
   };
 
-  const EXPERIENCE_LEVEL_STYLES: Record<ExperienceLevel, string> = {
-    JUNIOR: "bg-green-100 text-green-700",
-    MID: "bg-yellow-100 text-yellow-700",
-    SENIOR: "bg-orange-100 text-orange-700",
-    LEAD: "bg-red-100 text-red-700",
-  };
-
-  const JOB_TYPE_STYLES: Record<JobType, string> = {
-    FULL_TIME: "bg-emerald-100 text-emerald-700",
-    PART_TIME: "bg-blue-100 text-blue-700",
-    CONTRACT: "bg-amber-100 text-amber-700",
-    FREELANCE: "bg-purple-100 text-purple-700",
-    INTERNSHIP: "bg-pink-100 text-pink-700",
-  };
-
-  const WORK_MODE_STYLES: Record<WorkMode, string> = {
-    ONSITE: "bg-slate-100 text-slate-700",
-    REMOTE: "bg-green-100 text-green-700",
-    HYBRID: "bg-indigo-100 text-indigo-700",
+  const timeAgo = (date: Date) => {
+    const seconds = Math.floor(
+      (new Date().getTime() - new Date(date).getTime()) / 1000,
+    );
+    let interval = seconds / 31536000;
+    if (interval > 1) return Math.floor(interval) + "y ago";
+    interval = seconds / 2592000;
+    if (interval > 1) return Math.floor(interval) + "mo ago";
+    interval = seconds / 86400;
+    if (interval > 1) return Math.floor(interval) + "d ago";
+    interval = seconds / 3600;
+    if (interval > 1) return Math.floor(interval) + "h ago";
+    return "Just now";
   };
 
   return (
-    <Link
-      href={`/jobs/${job.slug}`}
-      className="group bg-white rounded-2xl overflow-hidden border border-slate-200/60 shadow-lg shadow-slate-900/5 hover:shadow-2xl hover:shadow-slate-900/10 hover:-translate-y-1 transition-all duration-300 flex h-full cursor-pointer"
-    >
-      <div className="relative h-full overflow-hidden">
-        <img
-          src={job.user.profile?.pictureUrl || "/avatars/male.svg"}
-          alt={job.title}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-        />
+    <div className="group bg-white rounded-2xl border border-slate-200 p-8 hover:shadow-xl transition-all duration-300 flex flex-col h-full hover:-translate-y-1">
+      <div className="flex justify-between items-start gap-6">
+        <div className="flex-1">
+          <Link
+            href={`/jobs/${job.slug}`}
+            className="block text-lg font-bold text-slate-900 uppercase tracking-tight hover:text-blue-600 transition-colors line-clamp-2"
+          >
+            {job.title}
+          </Link>
+          <p className="text-base font-medium text-slate-700 mt-2">
+            {job.user.profile?.name || "Unknown Company"}
+          </p>
+        </div>
 
-        <div className="absolute inset-0 bg-linear-to-t from-black/30 via-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+        <div className="shrink-0">
+          <div className="w-14 h-14 relative rounded-lg overflow-hidden">
+            <img
+              src={job.user.profile?.pictureUrl || "/avatars/male.svg"}
+              alt="Logo"
+              className="w-full h-full object-contain object-right-top"
+            />
+          </div>
+        </div>
+      </div>
 
-        <span className="absolute top-4 left-4 bg-white/80 backdrop-blur-md text-slate-900 text-xs font-semibold px-3 py-1.5 rounded-full shadow-sm">
-          {job.category.name}
+      <div className="mt-3 mb-6">
+        <p className="text-sm text-slate-500 font-medium flex items-center gap-2">
+          {job.user.profile?.companyAddress || "Remote"}{" "}
+          <span className="text-slate-400 font-normal">
+            ({WORK_MODE_LABELS[job.workMode]})
+          </span>
+        </p>
+      </div>
+
+      <div className="grow mb-6">
+        <p className="text-sm text-slate-600 leading-relaxed line-clamp-4">
+          {job.description}
+        </p>
+      </div>
+
+      <div className="pt-4 border-t border-slate-100">
+        <span className="text-xs text-slate-400 font-medium">
+          Posted {timeAgo(job.createdAt)}
         </span>
       </div>
-
-      <div className="p-6 flex flex-col h-full">
-        <div>
-          <h3 className="text-lg font-bold leading-snug text-slate-900 group-hover:text-eduBlue transition-colors line-clamp-2">
-            {job.title}
-          </h3>
-
-          <p className="text-black text-sm leading-relaxed">
-            {job.user.profile?.name} <br />
-            {job.user.profile?.companyAddress}
-          </p>
-
-          <p className="text-slate-600 text-sm leading-relaxed grow">
-            {job.description}
-          </p>
-        </div>
-        <div className="mt-auto">
-          <div>
-            <p className="text-black text-sm font-semibold">
-              Salary Expectation:
-            </p>
-            <p className="text-sm font-semibold text-emerald-700">
-              Rp{job.salaryMin} – Rp{job.salaryMax} IDR
-            </p>
-          </div>
-
-          <div className="mt-3">
-            <p className="text-sm font-semibold text-black">Tags:</p>
-
-            <div className="flex items-center gap-2 flex-wrap pt-2">
-              {job.level ? (
-                <span
-                  className={`text-xs font-semibold px-3 py-1 rounded-full ${EXPERIENCE_LEVEL_STYLES[job.level]}`}
-                >
-                  {EXPERIENCE_LEVEL_LABELS[job.level]}
-                </span>
-              ) : null}
-
-              <span
-                className={`text-xs font-semibold px-3 py-1 rounded-full ${JOB_TYPE_STYLES[job.type]}`}
-              >
-                {JOB_TYPE_LABELS[job.type]}
-              </span>
-              <span
-                className={`text-xs font-semibold px-3 py-1 rounded-full ${WORK_MODE_STYLES[job.workMode]}`}
-              >
-                {WORK_MODE_LABELS[job.workMode]}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </Link>
+    </div>
   );
 }
