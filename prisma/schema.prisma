@@ -1,0 +1,430 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  role      Role     @default(EDUCATEE)
+
+  profile   Profile?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  favorites             Favorite[]
+  reviews               Review[]
+  enrollments           Enrollment[]
+  workshopSubmissions   WorkshopSubmission[]
+  moduleProgresses      ModuleProgress[]
+  jobPostings           JobPosting[]
+  jobApplications       JobApplication[]
+  skills                Skill[]
+  experiences           Experience[]
+  cvs                   CV[]
+  adminActions          AdminAction[]
+}
+
+model Profile {
+  id             String   @id @default(uuid())
+  pictureUrl     String?
+  name           String?
+  bio            String?
+  
+  dob            DateTime?
+  gender         Gender?
+
+  companyWebsite  String?
+  companyAddress  String?
+  totalJobs       Int @default(0)
+  totalApplicants Int @default(0)
+  totalHired      Int @default(0)
+
+  userId         String   @unique
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  verification   CompanyVerification?
+}
+
+model CompanyVerification {
+  id         String            @id @default(uuid())
+  status     CompanyStatus @default(PENDING)
+  verifiedAt DateTime?
+  verifiedBy String?
+  rejectedAt DateTime?
+
+  profileId  String   @unique
+  profile    Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+}
+
+model Category {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  courses   Course[]
+  createdAt DateTime @default(now())
+}
+
+model Course {
+  id           String      @id @default(uuid())
+  title        String
+  slug         String      @unique
+  description  String
+  level        CourseLevel
+  duration     Int         @default(0)
+  thumbnailUrl String      @default("/thumbnail.jpeg")
+  isPublished  Boolean     @default(false)
+
+  avgRating    Float       @default(0)
+  reviewCount  Int         @default(0)
+
+  categoryId   String
+  category     Category   @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  items              CourseItem[]
+  learningPathItems  LearningPathItem[]
+  enrollments        Enrollment[]
+  favorites          Favorite[]
+  reviews            Review[]
+
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
+
+model Favorite {
+  userId   String
+  courseId String
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@id([userId, courseId])
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+
+  userId   String
+  courseId String
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId]) // one review per user per course
+}
+
+model CourseItem {
+  id         String @id @default(uuid())
+  slug       String
+  position   Int
+  type       CourseItemType
+
+  courseId   String
+  course     Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  moduleId   String? @unique
+  module     Module? @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  workshopId String? @unique
+  workshop   Workshop? @relation(fields: [workshopId], references: [id], onDelete: Cascade)
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([courseId, position])
+}
+
+model Module {
+  id         String @id @default(uuid())
+  title      String
+  contentUrl String
+
+  courseItem CourseItem?
+
+  progresses ModuleProgress[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ModuleProgress {
+  userId      String
+  moduleId    String
+  completedAt DateTime?
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  module Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, moduleId])
+  @@index([userId])
+  @@index([moduleId])
+}
+
+model Workshop {
+  id           String @id @default(uuid())
+  title        String
+  instructions String
+
+  courseItem   CourseItem?
+
+  submissions   WorkshopSubmission[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model WorkshopSubmission {
+  id            String   @id @default(uuid())
+  submissionUrl String
+  score         Int?
+  feedback      String?
+  submittedAt   DateTime @default(now())
+
+  userId        String
+  workshopId    String
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workshop      Workshop @relation(fields: [workshopId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, workshopId])
+  @@index([userId])
+  @@index([workshopId])
+}
+
+model Enrollment {
+  id              String @id @default(uuid())
+  progressPercent Float  @default(0)
+  status          EnrollmentStatus @default(IN_PROGRESS)
+
+  userId          String
+  courseId        String
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  certificate     Certificate?
+
+  @@unique([userId, courseId])
+  @@index([courseId])
+  @@index([userId])
+  @@index([status])
+}
+
+model Certificate {
+  id              String   @id @default(uuid())
+  certificateCode String   @unique
+  issuedAt        DateTime @default(now())
+  fileUrl         String   
+
+  enrollmentId    String   @unique
+  enrollment      Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+}
+
+model LearningPath {
+  id           String     @id @default(uuid())
+  title        String     @unique
+  slug         String     @unique
+  description  String
+  thumbnailUrl String     @default("/thumbnail.jpeg")
+  isPublished  Boolean    @default(false)
+
+  items       LearningPathItem[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+model LearningPathItem {
+  id             String @id @default(uuid())
+  position       Int
+
+  learningPathId String
+  courseId       String
+
+  learningPath   LearningPath @relation(fields: [learningPathId], references: [id], onDelete: Cascade)
+  course         Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([learningPathId, position])
+}
+
+model JobCategory {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+
+  jobs      JobPosting[]
+}
+
+model JobPosting {
+  id          String   @id @default(uuid())
+  title       String
+  slug        String   @unique
+  description String
+  location    String?
+
+  applicators Int @default(0)
+  hired       Int @default(0)
+
+  categoryId  String
+  category    JobCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  status      JobStatus @default(DRAFT)
+  type        JobType
+  workMode    WorkMode
+  level       ExperienceLevel?
+
+  paycheckMin Int?
+  paycheckMax Int?
+
+  userId      String
+  user        User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  applications JobApplication[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  expiresAt   DateTime?
+
+  @@index([slug])
+  @@index([status])
+  @@index([categoryId])
+  @@index([userId])
+  @@index([status, categoryId])
+}
+
+model JobApplication {
+  id          String   @id @default(uuid())
+  status      ApplicationStatus @default(APPLIED)
+  appliedAt   DateTime @default(now())
+  reviewedAt  DateTime?
+  decidedAt   DateTime?
+
+  userId      String
+  jobId       String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job  JobPosting @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, jobId])
+  @@index([status])
+}
+
+model Skill {
+  id     String @id @default(uuid())
+  name   String
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, name])
+}
+
+model Experience {
+  id          String   @id @default(uuid())
+  jobTitle    String
+  companyName String
+  startDate   DateTime
+  endDate     DateTime?
+
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model CV {
+  id          String   @id @default(uuid())
+  fileUrl     String
+  generatedAt DateTime @default(now())
+
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AdminAction {
+  id         String   @id @default(uuid())
+  actionType AdminActionType
+  createdAt  DateTime @default(now())
+
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum Role {
+  ADMIN
+  COMPANY
+  EDUCATEE
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum CompanyStatus {
+  UNVERIFIED
+  PENDING
+  VERIFIED
+}
+
+enum CourseLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+enum CourseItemType {
+  MODULE
+  WORKSHOP
+}
+
+enum EnrollmentStatus {
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum JobStatus {
+  DRAFT
+  PUBLISHED
+  CLOSED
+}
+
+enum JobType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  FREELANCE
+  INTERNSHIP
+}
+
+enum WorkMode {
+  ONSITE
+  REMOTE
+  HYBRID
+}
+
+enum ExperienceLevel {
+  JUNIOR
+  MID
+  SENIOR
+  LEAD
+}
+
+enum ApplicationStatus {
+  APPLIED
+  REVIEWED
+  ACCEPTED
+  REJECTED
+}
+
+enum AdminActionType {
+  APPROVE_COURSE
+  VERIFY_COMPANY
+}
